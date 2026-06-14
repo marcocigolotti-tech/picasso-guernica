@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz: Picasso e il Cubismo</title>
+    <style>
+        :root {
+            --kahoot-red: #e21b3c;
+            --kahoot-blue: #1368ce;
+            --kahoot-yellow: #d89e00;
+            --kahoot-green: #26890c;
+            --bg-color: #f2f2f2;
+            --text-dark: #333;
+        }
+        * { box-sizing: border-box; font-family: 'Montserrat', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-dark); display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        #app { width: 100%; max-width: 800px; padding: 20px; text-align: center; display: flex; flex-direction: column; flex-grow: 1; }
+        
+        /* Schermata Iniziale e Finale */
+        .screen { display: none; flex-direction: column; justify-content: center; align-items: center; flex-grow: 1; animation: fadeIn 0.5s ease-in; }
+        .screen.active { display: flex; }
+        
+        h1 { font-size: 2.5rem; color: #333; margin-bottom: 10px; }
+        p.subtitle { font-size: 1.2rem; color: #666; margin-bottom: 30px; }
+        
+        button.start-btn, button.next-btn, button.restart-btn {
+            padding: 15px 40px; font-size: 1.5rem; font-weight: bold; color: white;
+            background-color: var(--kahoot-blue); border: none; border-radius: 8px;
+            cursor: pointer; box-shadow: 0 4px 0 #0d4a96; transition: transform 0.1s, box-shadow 0.1s;
+        }
+        button.start-btn:active, button.next-btn:active, button.restart-btn:active { transform: translateY(4px); box-shadow: none; }
+        
+        /* Area Domanda */
+        .question-header { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; width: 100%; }
+        .question-text { font-size: 1.5rem; font-weight: bold; margin: 0; }
+        
+        /* Focus sull'opera (Immagine fittizia e note artistiche) */
+        .art-focus { background: #eef5ff; border-left: 5px solid var(--kahoot-blue); padding: 15px; margin-bottom: 20px; border-radius: 0 8px 8px 0; text-align: left; }
+        .art-focus img { width: 100%; max-height: 250px; object-fit: cover; border-radius: 4px; margin-bottom: 10px; background: #ccc; }
+        .art-focus h3 { margin: 0 0 5px 0; font-size: 1.1rem; color: var(--kahoot-blue); }
+        .art-focus p { margin: 0; font-size: 0.95rem; line-height: 1.4; color: #444; }
+
+        /* Griglia Opzioni */
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; margin-bottom: 20px; }
+        @media (max-width: 600px) { .options-grid { grid-template-columns: 1fr; } }
+        
+        .option {
+            padding: 20px; font-size: 1.2rem; font-weight: bold; color: white; border: none;
+            border-radius: 8px; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+            transition: opacity 0.3s, transform 0.1s; min-height: 100px; display: flex; align-items: center; justify-content: center;
+        }
+        .option:active { transform: translateY(4px); box-shadow: none; }
+        .option:nth-child(1) { background-color: var(--kahoot-red); box-shadow: 0 4px 0 #b3122c; }
+        .option:nth-child(2) { background-color: var(--kahoot-blue); box-shadow: 0 4px 0 #0d4a96; }
+        .option:nth-child(3) { background-color: var(--kahoot-yellow); box-shadow: 0 4px 0 #a37700; }
+        .option:nth-child(4) { background-color: var(--kahoot-green); box-shadow: 0 4px 0 #1c6608; }
+        
+        .option.disabled { pointer-events: none; opacity: 0.6; }
+        .option.correct { border: 4px solid #fff; opacity: 1 !important; transform: scale(1.02); }
+        .option.wrong { opacity: 0.3 !important; }
+
+        /* Feedback Spiegazione */
+        .feedback { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; width: 100%; text-align: left; animation: slideUp 0.3s ease-out; }
+        .feedback.show { display: block; }
+        .feedback-title { font-size: 1.3rem; font-weight: bold; margin-top: 0; }
+        .feedback-text { font-size: 1.1rem; line-height: 1.5; margin-bottom: 0; }
+        
+        /* Status Bar */
+        .status-bar { display: flex; justify-content: space-between; width: 100%; padding: 10px 0; font-weight: bold; color: #666; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="start-screen" class="screen active">
+        <h1>Guernica e il Cubismo</h1>
+        <p class="subtitle">Metti alla prova le tue conoscenze su Pablo Picasso. 30 Domande d'Arte!</p>
+        <button class="start-btn" onclick="startQuiz()">INIZIA IL QUIZ</button>
+    </div>
+
+    <div id="quiz-screen" class="screen">
+        <div class="status-bar">
+            <span id="question-counter">Domanda 1 / 30</span>
+            <span id="score-display">Punti: 0</span>
+        </div>
+        
+        <div class="question-header">
+            <h2 id="question-text" class="question-text">Testo della domanda...</h2>
+        </div>
+
+        <div class="art-focus">
+            <img id="art-image" src="https://via.placeholder.com/800x400.png?text=Opera+D'Arte" alt="Opera d'arte">
+            <h3>👁️ Analisi Visiva: Luce, Prospettiva e Colore</h3>
+            <p id="art-note">Nota artistica qui...</p>
+        </div>
+
+        <div class="options-grid" id="options-container">
+            </div>
+
+        <div id="feedback-box" class="feedback">
+            <h3 id="feedback-title" class="feedback-title"></h3>
+            <p id="feedback-text" class="feedback-text"></p>
+            <br>
+            <button class="next-btn" onclick="nextQuestion()">AVANTI</button>
+        </div>
+    </div>
+
+    <div id="end-screen" class="screen">
+        <h1>Quiz Completato!</h1>
+        <p class="subtitle" id="final-score">Hai totalizzato X punti su 30.</p>
+        <button class="restart-btn" onclick="location.reload()">RIGIOCA</button>
+    </div>
+</div>
+
+<script>
+    // Database delle 30 domande basate sul testo fornito
+    const questions = [
+        {
+            q: "Dove è nato Pablo Picasso il 25 ottobre 1881?",
+            options: ["Parigi, Francia", "Barcellona, Catalogna", "Malaga, Andalusìa", "Madrid, Spagna"],
+            answer: 2,
+            explanation: "Picasso è nato a Malaga in Andalusìa. Il padre era pittore e professore all'Accademia, incoraggiando fin da subito il suo talento.",
+            artNote: "Guarda un autoritratto giovanile: nota la pennellata tradizionale, il colore realistico e la prospettiva classica, tipici della sua formazione accademica prima della rottura cubista."
+        },
+        {
+            q: "Come si chiamava il piccolo edificio cadente a Montmartre dove Picasso aveva il suo studio e dove è nato il cubismo?",
+            options: ["Chat Noir", "Bateau-Lavoir", "Moulin Rouge", "Museo Reina Sofia"],
+            answer: 1,
+            explanation: "Si chiamava Bateau-Lavoir (battello lavatoio). Era scuro, sporco e nei giorni di tempesta scricchiolava come le barche lavatoio sulla Senna.",
+            artNote: "Immagina lo spazio del Bateau-Lavoir: una luce fioca, ombre spesse e un ambiente angusto. Questa assenza di luce naturale brillante spingerà Picasso a reinventare la luminosità mentale."
+        },
+        {
+            q: "Quale colore e stato d'animo predominano nel 'Periodo blu' (fino al 1904) di Picasso?",
+            options: ["Colori caldi (rosa, marrone) e figure distese", "Rosso fuoco e scene di rabbia e guerra", "Celeste/Azzurro, figure nere, malinconia e personaggi emarginati", "Colori pastello, paesaggi illuminati dal sole"],
+            answer: 2,
+            explanation: "Nel Periodo blu domina un colore freddo, il celeste, che trasmette tristezza e malinconia, ritraendo mendicanti e solitari.",
+            artNote: "Analizza il colore: il monocromatismo blu azzera la profondità spaziale atmosferica. Le figure, contornate da pesanti linee nere, appaiono piatte e prive di una luce realistica."
+        },
+        {
+            q: "Nel 'Periodo rosa' (fino al 1906), chi sono i soggetti principali dipinti da Picasso?",
+            options: ["Acrobati, giocolieri e artisti del circo", "Mendicanti, ciechi e poveri", "Soldati e generali della guerra civile", "Paesaggi urbani e fabbriche"],
+            answer: 0,
+            explanation: "Il Periodo rosa utilizza toni caldi e rappresenta soggetti dall'aspetto più disteso come acrobati, cavallerizzi e saltimbanchi.",
+            artNote: "Osserva la pennellata: si fa più morbida rispetto al periodo blu. I toni caldi (rosa, marrone) simulano un'illuminazione più accogliente, pur mantenendo uno spazio bidimensionale."
+        },
+        {
+            q: "Insieme a quale altro artista Picasso ha inventato il Cubismo?",
+            options: ["Henri Matisse", "Paul Cézanne", "Georges Braque", "Henri Rousseau"],
+            answer: 2,
+            explanation: "Picasso ha inventato il Cubismo insieme a Georges Braque, condividendo con lui le idee sviluppate dal 1907 al 1909.",
+            artNote: "Braque e Picasso scompongono lo spazio. La luce non proviene più da un'unica fonte (es. il sole), ma ogni singolo frammento geometrico ('cubo') ha una propria illuminazione indipendente."
+        },
+        {
+            q: "Quale quadro (1907) è considerato l'inizio del periodo influenzato dall'arte africana e una delle prime opere cubiste?",
+            options: ["Case a L'Estaque", "Les demoiselles d'Avignon", "Vecchio cieco e ragazzo", "Guernica"],
+            answer: 1,
+            explanation: "È 'Les demoiselles d'Avignon'. Picasso fu conquistato dalla scultura africana, un'arte razionale che esprimeva concetti spirituali più che apparenze visive.",
+            artNote: "Prospettiva azzerata! Le figure femminili si fondono con lo sfondo scheggiato. Osserva le scarificazioni africane (tratteggi obliqui) sui volti a destra, dipinte con pennellate crude."
+        },
+        {
+            q: "In cosa il Cubismo si oppone all'Impressionismo?",
+            options: ["Rifiuta la visione puramente 'retinica' per una realtà 'capita' razionalmente", "Usa solo il bianco e nero invece dei colori", "Torna a dipingere solo scene storiche e religiose", "Usa una prospettiva centrale ancora più precisa e rigida"],
+            answer: 0,
+            explanation: "Mentre l'Impressionismo si basava sull'impressione visiva immediata, il Cubismo vuole raffigurare gli oggetti come sono (con tutti i piani ribaltati), non solo come appaiono.",
+            artNote: "A differenza degli impressionisti che catturano la luce naturale con piccole macchie di colore, i cubisti frammentano la forma in solidi geometrici, ignorando la luce del momento."
+        },
+        {
+            q: "Da chi deriva il nome 'Cubismo'?",
+            options: ["Da Picasso stesso che amava la matematica", "Da Paul Cézanne in una lettera", "Da Henri Matisse che parlò in modo spregiativo di 'piccoli cubi'", "Dal poeta Max Jacob al Bateau-Lavoir"],
+            answer: 2,
+            explanation: "Nel 1908 Matisse definì alcune opere di Braque come fatte di 'piccoli cubi'. Nel 1909 il critico Vauxcelles le definì 'bizzarrie cubiste'.",
+            artNote: "Osserva un paesaggio cubista: case, alberi e cielo sono resi con la stessa materia pittorica e sfaccettati come diamanti. Lo spazio tridimensionale svanisce in una superficie sfaccettata."
+        },
+        {
+            q: "Quale grande pittore precedente anticipò il cubismo suggerendo di modellare la natura con la sfera, il cono e il cilindro?",
+            options: ["Claude Monet", "Paul Cézanne", "Vincent van Gogh", "Pierre-Auguste Renoir"],
+            answer: 1,
+            explanation: "Paul Cézanne, nella sua geometrizzazione delle forme, invitava a cercare nella natura sfere, coni e cilindri, sostituendo la realtà-vista con la realtà-pensata.",
+            artNote: "Cézanne stendeva il colore a larghe e piatte campiture (tasselli). Questa tecnica getta le basi per i piani sovrapposti che userà Picasso per mostrare un oggetto da più lati."
+        },
+        {
+            q: "Cosa caratterizza la fase del 'Cubismo Analitico' (1909-1911)?",
+            options: ["Uso di ritagli di giornale e colori accesi", "Visione simultanea da più punti di vista e frammentazione con colori monocromi/spenti", "Prospettiva perfetta e cura maniacale per la luce solare", "Soggetti esclusivamente religiosi o mitologici"],
+            answer: 1,
+            explanation: "Il cubismo analitico frammenta l'oggetto cogliendolo da tutti i punti di vista simultaneamente, usando colori spenti per concentrarsi sulle forme.",
+            artNote: "Il colore scompare per non distrarre. Usando grigi e marroni spenti, l'artista si concentra sulla struttura. La luce scivola sulle sfaccettature in modo quasi scultoreo."
+        },
+        {
+            q: "Quale tecnica innovativa è stata introdotta nel 'Cubismo Sintetico' (1912-1913)?",
+            options: ["L'uso della pittura ad olio mescolata alla cera", "La prospettiva a volo d'uccello", "Il papier collé, inserendo frammenti di carta, carta da parati e giornale sulla tela", "L'utilizzo della fotografia come base per dipingere"],
+            answer: 2,
+            explanation: "Nel cubismo sintetico si fondono materiali reali (giornali, tappezzerie) con la pittura, recuperando in parte il colore e le forme, svincolate dalla percezione tradizionale.",
+            artNote: "Con il papier collé, un vero pezzo di giornale entra nell'opera. La pittura non deve più imitare la realtà (luce, materia), ma costruisce un nuovo ordine formale autonomo."
+        },
+        {
+            q: "Perché i cubisti si interessarono all'Arte Africana e al 'Primitivismo'?",
+            options: ["Perché volevano dipingere solo animali feroci", "Per la libertà dalle leggi prospettiche tradizionali e la creatività istintiva", "Perché usavano colori molto più vivaci", "Per l'estremo realismo dei loro ritratti"],
+            answer: 1,
+            explanation: "I cubisti apprezzavano il primitivismo per le sue capacità espressive e perché libero dalle rigide regole della prospettiva occidentale, concentrandosi sulla mente più che sugli occhi.",
+            artNote: "Guarda le maschere africane: forme sintetiche e geometrizzate. Le incisioni nel legno creano ombre nette, una soluzione formale che Picasso imita con forti pennellate oblique."
+        },
+        {
+            q: "In quale anno è stata realizzata la celebre tela 'Guernica'?",
+            options: ["1914", "1945", "1937", "1896"],
+            answer: 2,
+            explanation: "L'opera è stata realizzata in due mesi febbrili e terminata il 4 giugno del 1937, durante la guerra civile spagnola.",
+            artNote: "Analizza Guernica: è un enorme olio su tela (351x782 cm) dipinto in pochi mesi. La pennellata è rapida, tesa e piatta, funzionale a comunicare un senso di urgenza e angoscia."
+        },
+        {
+            q: "Cosa raffigura l'opera 'Guernica'?",
+            options: ["Una corrida spagnola tradizionale", "Il bombardamento a tappeto di una cittadina basca da parte dell'aviazione tedesca", "La vittoria delle truppe di Francisco Franco", "Una giornata di mercato a Parigi"],
+            answer: 1,
+            explanation: "Il quadro condanna il bombardamento di Guernica del 26 aprile 1937, deciso con cinismo dall'aviazione nazista per terrorizzare la popolazione e sperimentare le bombe.",
+            artNote: "Prospettiva e spazio: non c'è distinzione tra spazio interno ed esterno ('visione simultanea'). Le fiamme e gli edifici distrutti si fondono con i corpi straziati in un unico incubo piatto."
+        },
+        {
+            q: "Per quale occasione fu commissionata 'Guernica'?",
+            options: ["Per decorare la stanza di Hitler", "Per il Padiglione spagnolo dell'Esposizione internazionale di Parigi nel 1937", "Per il Museo Picasso di Barcellona", "Per l'Assemblea dell'ONU a New York"],
+            answer: 1,
+            explanation: "Fu il governo della Repubblica spagnola a commissionare l'opera per rappresentare il Paese (e denunciare la guerra civile) all'Esposizione parigina.",
+            artNote: "Per imporsi nel Padiglione, l'opera sfrutta enormi contrasti di 'luce' in chiaroscuro. L'uso dei toni monocromatici serve a dare al dipinto l'oggettività drammatica di un reportage fotografico."
+        },
+        {
+            q: "Dove è conservata oggi 'Guernica'?",
+            options: ["Museo del Louvre, Parigi", "MOMA, New York", "Museo Reina Sofia, Madrid", "Museo Picasso, Malaga"],
+            answer: 2,
+            explanation: "Dopo un lungo esilio durante la dittatura franchista, l'opera si trova oggi al Museo Nazionale Centro d'Arte Reina Sofia a Madrid.",
+            artNote: "Guardandola dal vivo, la totale assenza di colore cattura l'attenzione sui taglienti cunei geometrici (cubismo) che formano i corpi, esasperando la violenza dell'impatto visivo."
+        },
+        {
+            q: "Quale tavolozza di colori ha usato Picasso in 'Guernica'?",
+            options: ["Colori pastello molto delicati", "Tavolozza monocromatica (bianco, nero, grigio)", "Rosso sangue e giallo oro", "Tutti i colori primari molto accesi"],
+            answer: 1,
+            explanation: "L'opera è quasi monocromatica, per accentuare il senso di tragedia, dolore e morte, ricordando anche le fotografie in bianco e nero dei giornali dell'epoca.",
+            artNote: "L'assenza di colore cancella la vitalità. La 'luce' è fredda, creata dal contrasto violento tra le campiture piatte di bianco puro e il nero profondo, tipico della sintesi cubista."
+        },
+        {
+            q: "Cosa simboleggiano le quattro donne e il bambino nell'opera 'Guernica'?",
+            options: ["Le muse ispiratrici dell'artista", "La parte più debole e indifesa colpita per incutere terrore", "Le divinità protettrici della Spagna", "La speranza e la rinascita post-bellica"],
+            answer: 1,
+            explanation: "Sono le vittime principali: la popolazione inerme colpita al mercato per puro terrorismo, condannando la violenza più crudele.",
+            artNote: "Osserva la deformazione cubista dei volti: occhi e narici spostati sullo stesso piano per mostrare l'urlo simultaneamente da ogni angolazione. Le bocche aperte diventano voragini oscure."
+        },
+        {
+            q: "Secondo l'analisi proposta, cosa rappresenta il cavallo in 'Guernica'?",
+            options: ["La velocità e il progresso dell'aviazione tedesca", "La forza invincibile di Francisco Franco", "La beltà e l'onore di un popolo ferito a morte", "Un animale scappato da un circo"],
+            answer: 2,
+            explanation: "Il cavallo ferito, lancinante al centro della composizione, rappresenta il popolo spagnolo e la nazione ferita a morte dalla guerra.",
+            artNote: "Il mantello del cavallo è coperto da tratteggi verticali (simili ai caratteri stampati dei giornali). Questo richiamo al Cubismo Sintetico ('papier collé') ricorda come la tragedia fu diffusa dai media."
+        },
+        {
+            q: "In Guernica, quale animale simboleggia la pace che non può avanzare nel mondo?",
+            options: ["Il toro", "La piccola colomba con le ali nere", "Il cavallo", "Un cane nascosto nelle rovine"],
+            answer: 1,
+            explanation: "Una piccola colomba dalle ali nere, appena visibile e intrappolata sullo sfondo, rappresenta il simbolo suggestivo della pace spezzata e immobile.",
+            artNote: "La prospettiva appiattita nasconde la colomba nel buio (nero su nero). La luce non la raggiunge, sottolineando la sconfitta visiva e concettuale della pace."
+        },
+        {
+            q: "Cosa rappresenta il lampadario dipinto in alto al centro in 'Guernica'?",
+            options: ["La bomba esplosa", "Il sole che sorge per portare speranza", "Quasi un occhio in lacrime o l'occhio del mondo", "La tecnologia che sconfigge la natura"],
+            answer: 2,
+            explanation: "Il lampadario ha una forma ovale e la lampadina dentellata al suo interno fa sì che sembri un occhio divino, testimone attonito e in lacrime della tragedia.",
+            artNote: "La 'luce' del lampadario (a forma di occhio) è tagliente come una sega. In contrasto c'è la fioca luce calda della lampada a olio tenuta dal fantasma a destra, simbolo della verità."
+        },
+        {
+            q: "Chi ha scattato la serie eccezionale di fotografie che documentano tutti i mutamenti del progetto 'Guernica'?",
+            options: ["Georges Braque", "Dora Maar", "Max Jacob", "Henri Rousseau"],
+            answer: 1,
+            explanation: "Dora Maar, compagna di Picasso, fotografò le fasi di realizzazione, mostrando come gli elementi intrisi di valenze simboliche furono studiati e poi assemblati.",
+            artNote: "Dora Maar registrò come Picasso modificasse continuamente la composizione: la prospettiva spaziale fu man mano cancellata a favore di un caotico appiattimento in primo piano."
+        },
+        {
+            q: "Un arazzo di 'Guernica' è stato esposto per 38 anni (fino al 2021) in un luogo altamente simbolico. Quale?",
+            options: ["Il Palazzo del Governo Spagnolo", "Il Palazzo di Vetro dell'ONU (Consiglio di Sicurezza) a New York", "La Casa Bianca a Washington", "Il Parlamento Europeo"],
+            answer: 1,
+            explanation: "Fu posizionato al Palazzo di Vetro dell'ONU per simboleggiare gli sforzi contro la guerra dell'organizzazione intergovernativa.",
+            artNote: "La sua enorme dimensione (oltre 7 metri) e le linee spezzate cubiste lo rendono un 'muro' insormontabile di condanna visiva, privo di profondità per non offrire vie di fuga allo sguardo."
+        },
+        {
+            q: "Quale frase rispose Picasso all'ufficiale tedesco che gli chiese: 'Avete fatto voi questo orrore?'",
+            options: ["'No, è opera vostra.'", "'Sì, per condannarvi.'", "'È l'orrore della guerra in generale.'", "'Non lo so, è ispirato all'arte primitiva.'"],
+            answer: 0,
+            explanation: "Picasso rispose con fermezza 'No, è opera vostra', attribuendo direttamente ai nazisti la responsabilità della distruzione di Guernica.",
+            artNote: "Il 'caos' compositivo del dipinto (arti mozzati, spazi ambigui) non è un errore prospettico, ma la traduzione visiva dell'orrore generato dalle bombe fasciste."
+        },
+        {
+            q: "Come descrisse Picasso il suo sviluppo artistico in una celebre citazione?",
+            options: ["'Ho dipinto da bambino e ora dipingo come un vecchio saggio.'", "'Ho impiegato quattro anni per dipingere come Raffaello, ma una vita per imparare a dipingere come un bambino.'", "'L'arte è morta con l'Impressionismo.'", "'Non ho mai imparato a disegnare, ho solo seguito il colore.'"],
+            answer: 1,
+            explanation: "Picasso ricercava la creatività istintiva dei bambini, liberi dalle leggi prospettiche e dal nozionismo tradizionale.",
+            artNote: "I bambini disegnano gli oggetti ribaltandone i piani per mostrare tutto ciò che sanno di un oggetto, non solo ciò che vedono. Il Cubismo applica razionalmente questa intuizione infantile."
+        },
+        {
+            q: "Nel raffigurare un cubo, perché i cubisti pensavano che la prospettiva rinascimentale fosse ingannevole ('verosimile' ma non 'vera')?",
+            options: ["Perché la prospettiva mostra solo un massimo di 3 facce, nascondendo le altre", "Perché la prospettiva richiedeva colori troppo scuri", "Perché usava solo forme curve", "Perché era troppo difficile da disegnare per loro"],
+            answer: 0,
+            explanation: "Nella prospettiva vedi solo alcune facce e appaiono deformate. I cubisti aprivano o ribaltavano i piani per mostrare tutte le facce del solido, raffigurandolo come è 'realmente'.",
+            artNote: "La prospettiva classica presuppone un osservatore fermo. Il Cubismo distrugge questo punto di vista statico: la tela diventa uno specchio rotto dove ogni frammento mostra un angolo diverso."
+        },
+        {
+            q: "Guernica fu dipinta durante la guerra civile in Spagna. Chi appoggiava il Generale Franco in quel conflitto?",
+            options: ["I governi di Francia e Inghilterra", "Mussolini e Hitler", "L'Unione Sovietica", "Gli Stati Uniti d'America"],
+            answer: 1,
+            explanation: "Il generale Franco guidava i militari contro il governo repubblicano, supportato militarmente dalle dittature di Mussolini e Hitler.",
+            artNote: "La violenza della guerra è resa tangibile dalle linee acute, appuntite come lance. Manca la morbida pennellata accademica: qui l'arte ferisce."
+        },
+        {
+            q: "In quale città Picasso proseguì i suoi studi accademici dal 1892 al 1900, oltre a La Coruña?",
+            options: ["Barcellona", "Roma", "Venezia", "Londra"],
+            answer: 0,
+            explanation: "Studiò alla scuola di Belle Arti di La Coruña e all'Accademia di Barcellona, dove entrò in contatto col Modernismo di Gaudì.",
+            artNote: "L'ambiente artistico di Barcellona lo introduce alla semplificazione formale, che sfocerà decenni dopo nel brutale smembramento spaziale delle forme cubiste."
+        },
+        {
+            q: "Quale animale rappresenta la Spagna, ed è descritto come 'estranato ma quasi causa responsabile di ciò che accade' in Guernica?",
+            options: ["L'orso", "L'aquila", "Il toro", "Il leone"],
+            answer: 2,
+            explanation: "Il toro, simbolo ancestrale della Spagna (e della corrida), si erge minaccioso a sinistra, estraniato ma visto da alcuni critici come responsabile della tragedia interna del Paese.",
+            artNote: "Il muso del toro è costruito combinando una visione frontale (gli occhi) con una di profilo. Questa è la firma della deformazione spaziale cubista: fondere più visioni in una."
+        },
+        {
+            q: "Quante vittime civili causarono le bombe su Guernica rispetto alla popolazione totale (7.000 abitanti)?",
+            options: ["Circa duecento", "Circa mille", "Circa duemila", "Nessuna, distrutta solo l'architettura"],
+            answer: 2,
+            explanation: "Le bombe lanciate nel pieno del mercato causarono circa 2.000 morti, annientando gran parte della cittadina e terrorizzando i superstiti.",
+            artNote: "Picasso non ritrae aerei o macerie iperrealistiche. Lo sventramento dei corpi geometrici e il disordine compositivo bastano a trasmettere un'angoscia universale ed eterna."
+        }
+    ];
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+
+    // Elementi DOM
+    const startScreen = document.getElementById('start-screen');
+    const quizScreen = document.getElementById('quiz-screen');
+    const endScreen = document.getElementById('end-screen');
+    
+    const questionText = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const questionCounter = document.getElementById('question-counter');
+    const scoreDisplay = document.getElementById('score-display');
+    const artNote = document.getElementById('art-note');
+    
+    const feedbackBox = document.getElementById('feedback-box');
+    const feedbackTitle = document.getElementById('feedback-title');
+    const feedbackText = document.getElementById('feedback-text');
+    const finalScore = document.getElementById('final-score');
+
+    function startQuiz() {
+        startScreen.classList.remove('active');
+        quizScreen.classList.add('active');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        // Reset stato
+        feedbackBox.classList.remove('show');
+        optionsContainer.innerHTML = '';
+        
+        const qData = questions[currentQuestionIndex];
+        questionText.textContent = qData.q;
+        questionCounter.textContent = `Domanda ${currentQuestionIndex + 1} / ${questions.length}`;
+        artNote.textContent = qData.artNote;
+
+        // Genera i bottoni delle opzioni
+        qData.options.forEach((optText, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option';
+            btn.textContent = optText;
+            btn.onclick = () => checkAnswer(index, btn);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedIndex, btnElement) {
+        const qData = questions[currentQuestionIndex];
+        const isCorrect = (selectedIndex === qData.answer);
+        
+        // Disabilita tutti i bottoni e mostra quale era quello giusto
+        const allButtons = optionsContainer.querySelectorAll('.option');
+        allButtons.forEach((btn, idx) => {
+            btn.classList.add('disabled');
+            if (idx === qData.answer) {
+                btn.classList.add('correct');
+            } else if (idx === selectedIndex && !isCorrect) {
+                btn.classList.add('wrong');
+            }
+        });
+
+        // Aggiorna punteggio
+        if (isCorrect) {
+            score++;
+            scoreDisplay.textContent = `Punti: ${score}`;
+            feedbackTitle.textContent = "✅ Corretto!";
+            feedbackTitle.style.color = "var(--kahoot-green)";
+        } else {
+            feedbackTitle.textContent = "❌ Sbagliato!";
+            feedbackTitle.style.color = "var(--kahoot-red)";
+        }
+
+        // Mostra spiegazione (2 righe)
+        feedbackText.textContent = qData.explanation;
+        feedbackBox.classList.add('show');
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < questions.length) {
+            loadQuestion();
+        } else {
+            showEndScreen();
+        }
+    }
+
+    function showEndScreen() {
+        quizScreen.classList.remove('active');
+        endScreen.classList.add('active');
+        finalScore.textContent = `Hai totalizzato ${score} punti su ${questions.length}. Ottimo lavoro!`;
+    }
+</script>
+
+</body>
+</html>
