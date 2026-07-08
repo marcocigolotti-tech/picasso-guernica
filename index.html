@@ -22,6 +22,17 @@
         .screen { display: none; flex-direction: column; justify-content: center; align-items: center; flex-grow: 1; animation: fadeIn 0.5s ease-in; }
         .screen.active { display: flex; }
         
+        /* Intestazione Testuale */
+        .teacher-header {
+            font-size: 1.3rem;
+            font-weight: 900;
+            color: var(--kahoot-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
         h1 { font-size: 2.5rem; color: #333; margin-bottom: 10px; }
         p.subtitle { font-size: 1.2rem; color: #666; margin-bottom: 30px; }
         
@@ -36,7 +47,7 @@
         .question-header { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; width: 100%; }
         .question-text { font-size: 1.5rem; font-weight: bold; margin: 0; }
         
-        /* Focus sull'opera (Immagine fittizia e note artistiche) */
+        /* Focus sull'opera */
         .art-focus { background: #eef5ff; border-left: 5px solid var(--kahoot-blue); padding: 15px; margin-bottom: 20px; border-radius: 0 8px 8px 0; text-align: left; }
         .art-focus img { width: 100%; max-height: 250px; object-fit: cover; border-radius: 4px; margin-bottom: 10px; background: #ccc; }
         .art-focus h3 { margin: 0 0 5px 0; font-size: 1.1rem; color: var(--kahoot-blue); }
@@ -78,6 +89,7 @@
 
 <div id="app">
     <div id="start-screen" class="screen active">
+        <div class="teacher-header">ARTE E IMMAGINE - PROF. CIGO - FUTURISMO</div>
         <h1>Guernica e il Cubismo</h1>
         <p class="subtitle">Metti alla prova le tue conoscenze su Pablo Picasso. 30 Domande d'Arte!</p>
         <button class="start-btn" onclick="startQuiz()">INIZIA IL QUIZ</button>
@@ -100,7 +112,7 @@
         </div>
 
         <div class="options-grid" id="options-container">
-            </div>
+        </div>
 
         <div id="feedback-box" class="feedback">
             <h3 id="feedback-title" class="feedback-title"></h3>
@@ -118,7 +130,6 @@
 </div>
 
 <script>
-    // Database delle 30 domande basate sul testo fornito
     const questions = [
         {
             q: "Dove è nato Pablo Picasso il 25 ottobre 1881?",
